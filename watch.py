@@ -25,7 +25,6 @@ with open('conf.yaml') as conf_file:
     CONF = yaml.load(conf_file)
 
 
-# noinspection PyPep8
 class Model(object):
 
     __url_base__ = 'https://play.google.com/store/devices/details/Nexus_6_{size}GB_{color_name}?id=nexus_6_{color}_{size}gb'
@@ -60,7 +59,6 @@ class Subscriber(object):
         return "{0}: {1}".format(self.email, self.models)
 
 
-# noinspection PyBroadException
 class ModelMonitor(object):
 
     __timeout__ = 5
@@ -124,7 +122,6 @@ class ModelMonitor(object):
                 else:
                     logger.debug("Skipping notification")
 
-    # noinspection PyUnusedLocal
     def send_notification(self, sub):
         logger.info("{1}: Notifying {0}".format(sub.email, self.model.name))
         # Reset the subs last notification time
@@ -161,7 +158,7 @@ class Monitor(object):
     def __init__(self):
         self._create_models()
         self._create_subs()
-        self._load_stats(); print self.model_stats
+        self._load_stats()
         self._monitor()
 
     def _create_models(self):
