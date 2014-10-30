@@ -1,0 +1,9 @@
+---
+user1@example.com:
+    interval: 60
+user2@example.com:
+  size: 64
+user3@example.com:
+  color: white
+  size: 64
+user4@example.com:

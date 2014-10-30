@@ -1,0 +1,4 @@
+---
+smtp_from: 'bot_address@domain.com'
+smtp_host: 'smtp.gmail.com'
+smtp_password: 'password'
