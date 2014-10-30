@@ -74,6 +74,10 @@ class ModelMonitor(object):
         logger.info("Monitoring {0} with {1} subscribers".format(self.model.name, len(self.subscribers)))
 
     def check(self):
+        if 'test_mode' in CONF and CONF['test_mode']:
+            self.notify()
+            return
+
         r = requests.get(self.model.url, timeout=self.__timeout__)
         try:
             if not r.status_code == 200:
@@ -81,17 +85,18 @@ class ModelMonitor(object):
                 return
 
             if re.search('We are out of inventory', r.text):
-                logger.info("{0}: Out of stock".format(self.model.name))
+                logger.debug("{0}: Out of stock".format(self.model.name))
                 return
 
-            logger.info("{0}: POSSIBLY IN STOCK!".format(self.model.name))
             self.notify()
 
         except Exception, e:
-            logger.exception(e)
             logger.info("{0}: Exception".format(self.model))
 
     def notify(self):
+        print "#" * 80
+        print "{0} in stock: {1}".format(self.model.name, self.model.url)
+        print "#" * 80
         for sub in self.subscribers:
             last_time = sub.notifications[self.model]
 
@@ -124,10 +129,18 @@ class ModelMonitor(object):
         msg['To'] = sub.email
 
         # Send email
-        s = smtplib.SMTP_SSL(CONF['smtp_host'])
-        s.login(self.smtp_from, self.smtp_password)
-        s.sendmail(self.smtp_from, sub.email, msg.as_string())
-        s.quit()
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                s = smtplib.SMTP_SSL(CONF['smtp_host'])
+                s.login(self.smtp_from, self.smtp_password)
+                s.sendmail(self.smtp_from, sub.email, msg.as_string())
+                s.quit()
+            except Exception:
+                logger.warning("Unable to send email {0}/{1}".format(attempt, max_attempts))
+                time.sleep(5 * attempt)
+            finally:
+                attempt += 1
 
 
 class Monitor(object):
