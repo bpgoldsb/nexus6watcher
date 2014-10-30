@@ -78,8 +78,8 @@ class ModelMonitor(object):
             self.notify()
             return
 
-        r = requests.get(self.model.url, timeout=self.__timeout__)
         try:
+            r = requests.get(self.model.url, timeout=self.__timeout__)
             if not r.status_code == 200:
                 logger.warning("{0}: Invalid code: {1}".format(self.model.name, r.status_code))
                 return
