@@ -1,8 +1,10 @@
 import logging
-import requests
-import time
-import smtplib
+import json
+import os
 import re
+import requests
+import smtplib
+import time
 import yaml
 from datetime import datetime
 from threading import Thread
@@ -23,6 +25,7 @@ with open('conf.yaml') as conf_file:
     CONF = yaml.load(conf_file)
 
 
+# noinspection PyPep8
 class Model(object):
 
     __url_base__ = 'https://play.google.com/store/devices/details/Nexus_6_{size}GB_{color_name}?id=nexus_6_{color}_{size}gb'
@@ -57,14 +60,16 @@ class Subscriber(object):
         return "{0}: {1}".format(self.email, self.models)
 
 
+# noinspection PyBroadException
 class ModelMonitor(object):
 
     __timeout__ = 5
     smtp_from = CONF['smtp_from']
     smtp_password = CONF['smtp_password']
 
-    def __init__(self, model, subscribers):
+    def __init__(self, model, subscribers, model_stats):
         self.model = model
+        self.stats = model_stats
         self.subscribers = []
 
         # Filter out members we do not care about
@@ -90,13 +95,16 @@ class ModelMonitor(object):
 
             self.notify()
 
-        except Exception, e:
+        except Exception:
             logger.info("{0}: Exception".format(self.model))
 
     def notify(self):
-        print "#" * 80
+        print "#" * 110
         print "{0} in stock: {1}".format(self.model.name, self.model.url)
-        print "#" * 80
+        print "#" * 110
+
+        self.stats.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
         for sub in self.subscribers:
             last_time = sub.notifications[self.model]
 
@@ -116,6 +124,7 @@ class ModelMonitor(object):
                 else:
                     logger.debug("Skipping notification")
 
+    # noinspection PyUnusedLocal
     def send_notification(self, sub):
         logger.info("{1}: Notifying {0}".format(sub.email, self.model.name))
         # Reset the subs last notification time
@@ -136,6 +145,7 @@ class ModelMonitor(object):
                 s.login(self.smtp_from, self.smtp_password)
                 s.sendmail(self.smtp_from, sub.email, msg.as_string())
                 s.quit()
+                return
             except Exception:
                 logger.warning("Unable to send email {0}/{1}".format(attempt, max_attempts))
                 time.sleep(5 * attempt)
@@ -151,6 +161,7 @@ class Monitor(object):
     def __init__(self):
         self._create_models()
         self._create_subs()
+        self._load_stats(); print self.model_stats
         self._monitor()
 
     def _create_models(self):
@@ -180,9 +191,24 @@ class Monitor(object):
             sub = Subscriber(sub_email, sub_models, sub_interval)
             self.subscribers.append(sub)
 
+    def _dump_stats(self):
+        if 'stats_file' in CONF:
+            with open(CONF['stats_file'], 'w') as stats_file:
+                stats_file.write(json.dumps(self.model_stats))
+
+    def _load_stats(self):
+        if 'stats_file' in CONF:
+            stats_file_path = CONF['stats_file']
+            if os.path.exists(stats_file_path):
+                with open(stats_file_path, 'r') as stats_file:
+                    self.model_stats = json.loads(stats_file.read())
+            else:
+                self.model_stats = dict.fromkeys(map(lambda x: x.name, self.models), [])
+
     def _worker(self):
         model = self.queue.get()
-        mm = ModelMonitor(model, self.subscribers)
+        model_stats = self.model_stats[model.name]
+        mm = ModelMonitor(model, self.subscribers, model_stats)
         while True:
             mm.check()
             time.sleep(self.__request_sleep__)
@@ -197,7 +223,15 @@ class Monitor(object):
         for model in self.models:
             self.queue.put(model)
 
-        while True:
-            time.sleep(1)
+        try:
+            i = 0
+            while True:
+                i += 1
+                time.sleep(1)
+                if i % 5 == 0:
+                    self._dump_stats()
+        except Exception:
+            self._dump_stats()
+            raise
 
 Monitor()

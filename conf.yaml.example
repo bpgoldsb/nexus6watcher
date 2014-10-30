@@ -2,4 +2,5 @@
 smtp_from: 'bot_address@domain.com'
 smtp_host: 'smtp.gmail.com'
 smtp_password: 'password'
+stats_file: '~/n6.stats'
 test_mode: 0
