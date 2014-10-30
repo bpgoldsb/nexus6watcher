@@ -80,7 +80,7 @@ class ModelMonitor(object):
                 logger.warning("{0}: Invalid code: {1}".format(self.model.name, r.status_code))
                 return
 
-            if not re.search('We are out of inventory', r.text):
+            if re.search('We are out of inventory', r.text):
                 logger.info("{0}: Out of stock".format(self.model.name))
                 return
 
@@ -178,13 +178,13 @@ class Monitor(object):
         self.queue = Queue()
         for i in range(len(self.models)):
             worker = Thread(target=self._worker)
-            worker.setDaemon(True)
+            worker.daemon = True
             worker.start()
 
         for model in self.models:
             self.queue.put(model)
 
-        self.queue.join()
-        time.sleep(1)
+        while True:
+            time.sleep(1)
 
 Monitor()
