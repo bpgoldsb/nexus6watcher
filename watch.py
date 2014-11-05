@@ -83,6 +83,7 @@ class ModelMonitor(object):
 
         try:
             r = requests.get(self.model.url, timeout=self.__timeout__)
+
             if not r.status_code == 200:
                 logger.warning("{0}: Invalid code: {1}".format(self.model.name, r.status_code))
                 return
@@ -91,10 +92,15 @@ class ModelMonitor(object):
                 logger.debug("{0}: Out of stock".format(self.model.name))
                 return
 
+            r_size = len(r.text)
+            if r_size < 2048:
+                logger.warning("{0}: smaller than expected response size: {1}".format(self.model.name, r_size))
+                return
+
             self.notify()
 
-        except Exception:
-            logger.info("{0}: Exception".format(self.model))
+        except Exception, e:
+            logger.info("{0}: {1} Exception".format(self.model, type(e)))
 
     def notify(self):
         print "#" * 110
